@@ -69,17 +69,27 @@ The app starts on `http://localhost:8080` by default. Send requests to `POST /ap
 
 ## Design Decisions
 
-**1. Separated fetching, validation, and parsing into distinct services**
-Rather than one monolithic method, `UrlValidator`, `WebPageFetcher`, and `MetaDataExtrator` each own one responsibility. This made the parsing logic — the part most likely to have edge cases — independently unit-testable without needing a live network call or a mocked HTTP layer for every test.
+### 1. Followed the Single Responsibility Principle
+The application is split into dedicated services for URL validation, webpage fetching, and metadata extraction. Each component has one clear responsibility, making the code easier to maintain, test, and extend without affecting the rest of the application.
 
-**2. Used Jsoup's built-in `Connection.execute()` for fetching instead of raw `HttpClient`**
-Jsoup handles both the HTTP fetch and HTML parsing in one dependency, and returns a `Document` directly — avoiding a second parsing step and keeping `WebPageFetcher` simple.
+### 2. Used Jsoup for both HTTP requests and HTML parsing
+Instead of combining multiple libraries, Jsoup was used to fetch webpages and parse HTML. This kept the implementation lightweight, reduced dependencies, and simplified the data extraction process.
 
-**3. Treated an empty or whitespace-only `alt` attribute the same as a missing one**
-`getImagesWithoutAlt()` checks both `!img.hasAttr("alt")` and an empty/blank value — an `alt=""` on a non-decorative image is still an accessibility failure, so counting it separately would have understated the real problem the task is testing for.
+### 3. Measured response time at the application level
+Response time is recorded from the moment the fetch request is initiated until the page is successfully retrieved. This provides a practical measure of the time experienced by the application rather than relying on server-reported timings.
+
+### 4. Counted empty `alt` attributes as missing
+Images with no `alt` attribute or a blank `alt` value are both counted as missing. This better reflects accessibility issues, since non-decorative images should contain meaningful alternative text.
+
+### 5. Validated URLs before making network requests
+Incoming URLs are validated before any HTTP request is sent. This avoids unnecessary network calls, provides faster feedback for invalid input, and keeps error handling straightforward.
 
 ---
+## AI Usage
 
+AI was used to assist with the frontend UI, improve the README, and generate test cases during testing. All backend development, API design, validation, parsing logic, architectural decisions, and project structure were designed and implemented by me.
+
+---
 ## Built for Digital Heroes Training Task
 
 Live tool built for the [Digital Heroes](https://digitalheroesco.com) SDE hiring assessment.
