@@ -20,7 +20,14 @@ Given a URL, Page Pulse fetches the page and returns:
 - Approximate word count
 
 ---
+## Working
 
+<img width="1917" height="963" alt="Screenshot 2026-07-26 184646" src="https://github.com/user-attachments/assets/37f555e6-f2b4-404a-ac18-3a465ad4439b" />
+<img width="1246" height="832" alt="Screenshot 2026-07-26 184917" src="https://github.com/user-attachments/assets/4d61e8dd-5816-48bd-90d1-aa0ae1a2e27b" />
+
+
+
+---
 ## API Contract
 
 ### `POST /api/analyze`
