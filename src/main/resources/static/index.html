@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Web Pulse — Analyze any webpage instantly</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --paper: #F1F5EC;
+            --paper-line: #CFDBC6;
+            --ink: #14261F;
+            --ink-soft: #4C6157;
+            --pulse-red: #E4463C;
+            --signal-teal: #1C7A5B;
+            --amber: #C97A1F;
+            --panel: #FFFFFF;
+            --panel-border: #DCE5D3;
+            --radius: 4px;
+            --mono: 'IBM Plex Mono', ui-monospace, monospace;
+            --display: 'Space Grotesk', sans-serif;
+            --body: 'Inter', sans-serif;
+        }
+        [hidden] {
+            display: none !important;
+        }
+        *{ box-sizing: border-box; }
+
+        html,body{
+            margin:0;
+            padding:0;
+            background:
+                    linear-gradient(var(--paper-line) 1px, transparent 1px) 0 0 / 100% 28px,
+                    var(--paper);
+            color: var(--ink);
+            font-family: var(--body);
+            min-height: 100vh;
+        }
+
+        a{ color: var(--signal-teal); }
+        a:focus-visible, button:focus-visible, input:focus-visible{
+            outline: 2px solid var(--signal-teal);
+            outline-offset: 2px;
+        }
+
+        .sheet{
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 0 24px 48px;
+        }
+
+        /* ---------- Header ---------- */
+        header.chart-header{
+            padding: 40px 0 20px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+        .chart-id{
+            font-family: var(--mono);
+            font-size: 12px;
+            letter-spacing: 0.12em;
+            color: var(--ink-soft);
+            text-transform: uppercase;
+        }
+        h1{
+            font-family: var(--display);
+            font-weight: 700;
+            font-size: clamp(32px, 6vw, 44px);
+            margin: 6px 0 4px;
+            letter-spacing: -0.01em;
+        }
+        .subtitle{
+            margin: 0;
+            color: var(--ink-soft);
+            font-size: 15px;
+        }
+
+        /* ---------- Pulse trace (signature element) ---------- */
+        .pulse-trace{
+            width: 100%;
+            height: 64px;
+            margin: 4px 0 8px;
+        }
+        .pulse-trace svg{ width: 100%; height: 100%; display:block; }
+        .pulse-path{
+            fill: none;
+            stroke: var(--ink-soft);
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 340;
+            stroke-dashoffset: 0;
+            animation: trace 3.2s linear infinite;
+            opacity: 0.55;
+        }
+        .pulse-trace.state-loading .pulse-path{
+            stroke: var(--ink);
+            animation-duration: 0.9s;
+            opacity: 0.85;
+        }
+        .pulse-trace.state-success .pulse-path{
+            stroke: var(--signal-teal);
+            animation: none;
+            stroke-dashoffset: 340;
+            opacity: 1;
+        }
+        .pulse-trace.state-error .pulse-path{
+            stroke: var(--pulse-red);
+            animation: none;
+            stroke-dashoffset: 340;
+            opacity: 1;
+        }
+        @keyframes trace{
+            from{ stroke-dashoffset: 340; }
+            to{ stroke-dashoffset: 0; }
+        }
+        @media (prefers-reduced-motion: reduce){
+            .pulse-path{ animation: none !important; stroke-dashoffset: 340; }
+        }
+
+        /* ---------- Admission form (URL input) ---------- */
+        .admission-form{
+            padding: 24px 0 8px;
+        }
+        .admission-form label{
+            display:block;
+            font-family: var(--mono);
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            margin-bottom: 8px;
+        }
+        .input-row{
+            display:flex;
+            gap: 10px;
+        }
+        #url-input{
+            flex: 1;
+            min-width: 0;
+            padding: 13px 14px;
+            font-size: 15px;
+            font-family: var(--body);
+            color: var(--ink);
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius);
+        }
+        #url-input::placeholder{ color: #9AAA93; }
+
+        #analyze-btn{
+            flex-shrink: 0;
+            padding: 13px 22px;
+            font-family: var(--display);
+            font-weight: 600;
+            font-size: 15px;
+            color: #F6FBF3;
+            background: var(--ink);
+            border: 1px solid var(--ink);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: background 0.15s ease, transform 0.1s ease;
+        }
+        #analyze-btn:hover{ background: var(--signal-teal); border-color: var(--signal-teal); }
+        #analyze-btn:active{ transform: translateY(1px); }
+        #analyze-btn:disabled{
+            background: #A9B7A2;
+            border-color: #A9B7A2;
+            cursor: not-allowed;
+        }
+
+        .loading-label{
+            display:flex;
+            align-items:center;
+            gap: 8px;
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--ink-soft);
+            margin-top: 10px;
+            letter-spacing: 0.04em;
+        }
+        .loading-label::before{
+            content: "";
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--ink);
+            animation: blink 1s ease-in-out infinite;
+        }
+        @keyframes blink{ 50%{ opacity: 0.15; } }
+
+        /* ---------- Error box ---------- */
+        .error-box{
+            margin-top: 18px;
+            padding: 14px 16px;
+            background: #FBEAE8;
+            border: 1px solid var(--pulse-red);
+            border-radius: var(--radius);
+            display:flex;
+            gap: 10px;
+            align-items:flex-start;
+        }
+        .error-box{ align-items: center; }
+        .error-status{
+            margin-left: auto;
+            flex-shrink: 0;
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 600;
+            color: #7A2A24;
+            background: #F5CFC9;
+            padding: 2px 8px;
+            border-radius: var(--radius);
+        }
+        .error-icon{
+            font-family: var(--mono);
+            color: var(--pulse-red);
+            font-weight: 600;
+        }
+        #error-text{
+            margin:0;
+            color: #7A2A24;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* ---------- Result section ---------- */
+        .result-section{ margin-top: 28px; }
+        .result-heading{
+            display:flex;
+            align-items:baseline;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .result-heading h2{
+            font-family: var(--display);
+            font-size: 18px;
+            margin: 0;
+        }
+        .result-url{
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--ink-soft);
+            max-width: 60%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .vitals-grid{
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--panel-border);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+        .vital{
+            background: var(--panel);
+            padding: 16px 18px;
+        }
+        .vital.span-2{ grid-column: 1 / -1; }
+        .vital .eyebrow{
+            font-family: var(--mono);
+            font-size: 10.5px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--ink-soft);
+            margin: 0 0 6px;
+        }
+        .vital .reading{
+            font-family: var(--mono);
+            font-size: 26px;
+            font-weight: 500;
+            margin: 0;
+            line-height: 1.1;
+        }
+        .vital .reading.text{
+            font-size: 15px;
+            font-family: var(--body);
+            font-weight: 500;
+            word-break: break-word;
+        }
+        .vital .reading small{
+            font-family: var(--mono);
+            font-size: 13px;
+            color: var(--ink-soft);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+        .status-ok{ color: var(--signal-teal); }
+        .status-warn{ color: var(--amber); }
+        .status-bad{ color: var(--pulse-red); }
+
+        /* ---------- Footer ---------- */
+        footer{
+            max-width: 780px;
+            margin: 40px auto 0;
+            padding: 20px 24px;
+            border-top: 1px solid var(--panel-border);
+            font-family: var(--mono);
+            font-size: 12px;
+            color: var(--ink-soft);
+            text-align: center;
+        }
+        footer a{
+            color: var(--ink);
+            font-weight: 600;
+            text-decoration-color: var(--panel-border);
+        }
+
+        @media (max-width: 520px){
+            .input-row{ flex-direction: column; }
+            #analyze-btn{ width: 100%; }
+            .vitals-grid{ grid-template-columns: 1fr; }
+            .result-url{ max-width: 45%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sheet">
+
+    <header class="chart-header">
+        <div class="chart-id">CHART&nbsp;NO. PP-001</div>
+        <h1>Page Pulse</h1>
+        <p class="subtitle">Analyze any webpage instantly</p>
+    </header>
+
+    <div class="pulse-trace" id="pulse-trace" aria-hidden="true">
+        <svg viewBox="0 0 700 64" preserveAspectRatio="none">
+            <path class="pulse-path" d="M0,32 L200,32 L225,10 L250,54 L275,32 L300,32 L320,20 L340,32 L700,32" />
+        </svg>
+    </div>
+
+    <main>
+        <section class="admission-form">
+            <label for="url-input">Webpage URL</label>
+            <div class="input-row">
+                <input id="url-input" type="url" placeholder="https://example.com" autocomplete="off" />
+                <button id="analyze-btn" type="button">Analyze</button>
+            </div>
+            <div class="loading-label" id="loading-label" hidden>Reading vitals…</div>
+        </section>
+
+        <div class="error-box" id="error-box" role="alert" hidden>
+            <span class="error-icon">!</span>
+            <p id="error-text"></p>
+            <span class="error-status" id="error-status"></span>
+        </div>
+
+        <section class="result-section" id="result-section" hidden>
+            <div class="result-heading">
+                <h2>Vitals</h2>
+                <span class="result-url" id="result-url"></span>
+            </div>
+
+            <div class="vitals-grid">
+                <div class="vital">
+                    <p class="eyebrow">HTTP Status</p>
+                    <p class="reading" id="stat-status">—</p>
+                </div>
+                <div class="vital">
+                    <p class="eyebrow">Response Time</p>
+                    <p class="reading" id="stat-time">—</p>
+                </div>
+                <div class="vital span-2">
+                    <p class="eyebrow">Page Title</p>
+                    <p class="reading text" id="stat-title">—</p>
+                </div>
+                <div class="vital span-2">
+                    <p class="eyebrow">Meta Description</p>
+                    <p class="reading text" id="stat-desc">—</p>
+                </div>
+                <div class="vital">
+                    <p class="eyebrow">H1 Count</p>
+                    <p class="reading" id="stat-h1">—</p>
+                </div>
+                <div class="vital">
+                    <p class="eyebrow">Images Without Alt</p>
+                    <p class="reading" id="stat-alt">—</p>
+                </div>
+                <div class="vital span-2">
+                    <p class="eyebrow">Word Count</p>
+                    <p class="reading" id="stat-words">—</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+</div>
+
+<footer>
+    Built for <a href="https://digitalheroesco.com" target="_blank" rel="noopener noreferrer">Digital Heroes</a> Training Task
+</footer>
+
+<script>
+    (function(){
+        "use strict";
+
+        const USE_DEMO_DATA = false;
+        const API_URL = "/api/analyze";
+
+        const urlInput      = document.getElementById("url-input");
+        const analyzeBtn    = document.getElementById("analyze-btn");
+        const loadingLabel  = document.getElementById("loading-label");
+        const errorBox      = document.getElementById("error-box");
+        const errorText     = document.getElementById("error-text");
+        const errorStatusEl = document.getElementById("error-status");
+        const resultSection = document.getElementById("result-section");
+        const pulseTrace    = document.getElementById("pulse-trace");
+        const resultUrl     = document.getElementById("result-url");
+
+        function setPulseState(state){
+            pulseTrace.classList.remove("state-loading", "state-success", "state-error");
+            if(state) pulseTrace.classList.add("state-" + state);
+        }
+
+        function isValidUrl(value){
+            try{
+                const u = new URL(value);
+                return u.protocol === "http:" || u.protocol === "https:";
+            }catch(e){
+                return false;
+            }
+        }
+
+        function showError(message, status){
+            errorText.textContent = message;
+            if(status){
+                errorStatusEl.textContent = status;
+                errorStatusEl.hidden = false;
+            } else {
+                errorStatusEl.hidden = true;
+            }
+            errorBox.hidden = false;
+            resultSection.hidden = true;
+            setPulseState("error");
+        }
+
+        function hideError(){
+            errorBox.hidden = true;
+        }
+
+        function setLoading(isLoading){
+            analyzeBtn.disabled = isLoading;
+            loadingLabel.hidden = !isLoading;
+            if(isLoading){
+                hideError();
+                resultSection.hidden = true;
+                setPulseState("loading");
+            }
+        }
+
+        function classifyStatus(code){
+            if(code >= 200 && code < 400) return "status-ok";
+            if(code >= 400 && code < 500) return "status-warn";
+            return "status-bad";
+        }
+
+        function renderResult(data, sourceUrl){
+            hideError();
+            resultUrl.textContent = sourceUrl;
+
+            const statusEl = document.getElementById("stat-status");
+            statusEl.textContent = data.statusCode;
+            statusEl.className = "reading " + classifyStatus(data.statusCode);
+
+            document.getElementById("stat-time").innerHTML =
+                data.responseTime + "<small>ms</small>";
+
+            document.getElementById("stat-title").textContent =
+                data.title && data.title.trim() ? data.title : "(no title found)";
+
+            document.getElementById("stat-desc").textContent =
+                data.metaDescription && data.metaDescription.trim()
+                    ? data.metaDescription
+                    : "(no meta description found)";
+
+            document.getElementById("stat-h1").textContent = data.h1count;
+
+            const altEl = document.getElementById("stat-alt");
+            altEl.textContent = data.imagesWithoutAlt;
+            altEl.className = "reading " + (data.imagesWithoutAlt > 0 ? "status-warn" : "status-ok");
+
+            document.getElementById("stat-words").textContent =
+                data.wordCount.toLocaleString();
+
+            resultSection.hidden = false;
+            setPulseState(data.statusCode >= 400 ? "error" : "success");
+        }
+
+        function fakeAnalyze(targetUrl){
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    if(/fail|error/i.test(targetUrl)){
+                        reject({ message: "Unable to fetch webpage. The server did not respond.", status: 500 });
+                        return;
+                    }
+                    resolve({
+                        statusCode: 200,
+                        responseTimeMs: Math.floor(120 + Math.random() * 300),
+                        title: "Example Domain",
+                        metaDescription: "This domain is for use in illustrative examples in documents.",
+                        h1Count: 1,
+                        imagesWithoutAlt: 2,
+                        wordCount: 347
+                    });
+                }, 1100);
+            });
+        }
+
+        async function realAnalyze(targetUrl){
+            const res = await fetch(API_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: targetUrl })
+            });
+
+            let payload = null;
+            try{ payload = await res.json(); }catch(e){ /* non-JSON response */ }
+
+            if(!res.ok){
+                const message = (payload && payload.message) ? payload.message : "Unable to fetch webpage.";
+                const status = (payload && payload.status) ? payload.status : res.status;
+                throw { message, status };
+            }
+            return payload;
+        }
+
+        async function handleAnalyze(){
+            const value = urlInput.value.trim();
+
+            if(!value){
+                showError("Enter a URL to analyze.");
+                return;
+            }
+            if(!isValidUrl(value)){
+                showError("Invalid URL. Include the protocol, e.g. https://example.com");
+                return;
+            }
+
+            setLoading(true);
+            try{
+                const data = USE_DEMO_DATA
+                    ? await fakeAnalyze(value)
+                    : await realAnalyze(value);
+                renderResult(data, value);
+            }catch(err){
+                const message = (err && err.message) ? err.message : "Something went wrong while analyzing this page.";
+                const status = err && err.status;
+                showError(message, status);
+            }finally{
+                setLoading(false);
+            }
+        }
+
+        analyzeBtn.addEventListener("click", handleAnalyze);
+        urlInput.addEventListener("keydown", (e) => {
+            if(e.key === "Enter") handleAnalyze();
+        });
+    })();
+</script>
+
+</body>
+</html>
