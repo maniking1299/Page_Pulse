@@ -67,6 +67,18 @@ The app starts on `http://localhost:8080` by default. Send requests to `POST /ap
 
 ---
 
+## Design Decisions
+
+**1. Separated fetching, validation, and parsing into distinct services**
+Rather than one monolithic method, `UrlValidator`, `WebPageFetcher`, and `MetaDataExtrator` each own one responsibility. This made the parsing logic — the part most likely to have edge cases — independently unit-testable without needing a live network call or a mocked HTTP layer for every test.
+
+**2. Used Jsoup's built-in `Connection.execute()` for fetching instead of raw `HttpClient`**
+Jsoup handles both the HTTP fetch and HTML parsing in one dependency, and returns a `Document` directly — avoiding a second parsing step and keeping `WebPageFetcher` simple.
+
+**3. Treated an empty or whitespace-only `alt` attribute the same as a missing one**
+`getImagesWithoutAlt()` checks both `!img.hasAttr("alt")` and an empty/blank value — an `alt=""` on a non-decorative image is still an accessibility failure, so counting it separately would have understated the real problem the task is testing for.
+
+---
 
 ## Built for Digital Heroes Training Task
 
