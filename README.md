@@ -45,13 +45,6 @@ Given a URL, Page Pulse fetches the page and returns:
 }
 ```
 
-**Example request (curl):**
-```bash
-curl -X POST https://webpage-pulse.onrender.com/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com"}'
-```
-
 ## Setup (running locally)
 
 **Prerequisites:** Java 21, Maven (or use the included wrapper)
